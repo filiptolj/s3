@@ -1,0 +1,8 @@
+/target
+/data
+__pycache__/
+# local credentials / env files
+credentials
+*.credentials
+.env
+*.env

@@ -1,0 +1,44 @@
+# systemd unit for the s3 server.
+#
+#   useradd --system --home /var/lib/s3 --shell /usr/sbin/nologin s3
+#   install -m 0755 target/release/s3 /usr/local/bin/s3
+#   install -d -o s3 -g s3 -m 0750 /var/lib/s3 /etc/s3
+#   install -o root -g s3 -m 0640 credentials /etc/s3/credentials   # access_key:secret_key lines
+#   cp deploy/s3.service /etc/systemd/system/ && systemctl enable --now s3
+#
+# Key rotation: edit /etc/s3/credentials, then `systemctl reload s3`.
+
+[Unit]
+Description=S3-compatible object storage
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+User=s3
+Group=s3
+ExecStart=/usr/local/bin/s3 --data /var/lib/s3 --address 127.0.0.1:9000 --credentials-file /etc/s3/credentials --access-log
+ExecReload=/bin/kill -HUP $MAINPID
+# Optional: Environment=S3_METRICS_TOKEN=... (or an EnvironmentFile with mode 0600)
+Restart=on-failure
+RestartSec=2
+# Allow in-flight requests to drain on stop.
+TimeoutStopSec=40
+LimitNOFILE=1048576
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+ReadWritePaths=/var/lib/s3
+
+[Install]
+WantedBy=multi-user.target
